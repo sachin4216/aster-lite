@@ -5,6 +5,6 @@ public class PatientNotFoundException extends RuntimeException {
 
     public PatientNotFoundException(Long id){
         // PAT-2 criterion 2 wants the id in the message.
-        super("patient with id " + id + " not found");
+        super("Patient with id " + id + " not found");
     }
 }
