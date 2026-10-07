@@ -5,4 +5,5 @@ import com.asterlite.patient_service.dto.PatientResponse;
 
 public interface PatientService {
     PatientResponse register(PatientRequest request);
+    PatientResponse getById(Long id);
 }
