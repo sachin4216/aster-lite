@@ -6,10 +6,7 @@ import com.asterlite.patient_service.service.PatientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 
@@ -25,5 +22,10 @@ public class PatientController {
         // created(uri) sets status 201 and the Location header. A relative URI still works behind the gateway.
         URI location = URI.create("/api/patients/" + created.id());
         return ResponseEntity.created(location).body(created);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PatientResponse> getById(@PathVariable Long id){
+        return ResponseEntity.ok().body(service.getById(id));
     }
 }
