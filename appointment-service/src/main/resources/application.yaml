@@ -1,0 +1,7 @@
+spring:
+  application:
+    # must match the file name config-server serves: config/appointment-service.yml
+    name: appointment-service
+  config:
+    # fetch port, datasource and Eureka settings from config-server at startup
+    import: configserver:http://localhost:8888

@@ -1,4 +1,4 @@
-package com.asterlite.patient_service.filter;
+package com.asterlite.appointment_service.filter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -34,7 +34,7 @@ import java.io.IOException;
 @Component
 public class InstancePortFilter extends OncePerRequestFilter {
 
-    // The header name from PAT-8 criterion 5, kept in one constant so there is no typo risk.
+    // The header name from APT-1 criterion 5, kept in one constant so there is no typo risk.
     private static final String HEADER = "X-Instance-Port";
 
     // final + constructor injection: the value is set once at startup and never changes.
@@ -42,9 +42,9 @@ public class InstancePortFilter extends OncePerRequestFilter {
     private final String port;
 
     // @Value reads a property from the Spring Environment. server.port is not in this
-    // module's application.yaml; it arrives from Config Server (patient-service.yml -> 8081).
-    // On Day 2 you start a second instance with --server.port=8091. Command-line arguments
-    // override Config Server, so that instance injects 8091 here.
+    // module's application.yaml; it arrives from Config Server (appointment-service.yml -> 8082).
+    // If you start a second instance with a --server.port program argument, command-line
+    // arguments override Config Server, so that instance injects its own port here.
     // ":8080" is a fallback used only if server.port is not defined anywhere. 8080 is
     // Spring Boot's own default port, so the header stays truthful. Without the fallback
     // the application fails to start with "Could not resolve placeholder 'server.port'",

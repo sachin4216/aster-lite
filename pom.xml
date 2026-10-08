@@ -24,6 +24,7 @@
         <module>config-server</module>
         <module>patient-service</module>
         <module>api-gateway</module>
+        <module>appointment-service</module>
     </modules>
     <dependencyManagement>
         <dependencies>
