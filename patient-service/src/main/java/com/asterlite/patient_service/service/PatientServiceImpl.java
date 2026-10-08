@@ -71,4 +71,37 @@ public class PatientServiceImpl implements PatientService{
         Page<PatientResponse> page = repository.search(status, prefix, pageable).map(mapper::toResponse);
         return PageResponse.from(page);
     }
+
+    @Override
+    public PatientResponse update(Long id, PatientRequest request) {
+        // Load first: an unknown id is a 404 before anything else is checked.
+        Patient patient = repository.findById(id)
+                .orElseThrow(() -> new PatientNotFoundException(id));
+
+        String email = request.email().toLowerCase(Locale.ROOT);
+
+        // Only another patient's email is a conflict. Keeping your own email is allowed.
+        if (repository.existsByEmailAndIdNot(email, id)) {
+            throw new DuplicateEmailException(email);
+        }
+
+        // Only client-editable fields are copied. id, status and createdAt are never touched.
+        patient.setFirstName(request.firstName());
+        patient.setLastName(request.lastName());
+        patient.setEmail(email);
+        patient.setPhone(request.phone());
+        patient.setDateOfBirth(request.dateOfBirth());
+        // Left out of the request: keep the current channel instead of silently resetting it to EMAIL.
+        if (request.preferredChannel() != null) {
+            patient.setPreferredChannel(request.preferredChannel());
+        }
+
+        try {
+            // saveAndFlush runs the UPDATE now, so @PreUpdate has set updatedAt before the response is built.
+            return mapper.toResponse(repository.saveAndFlush(patient));
+        } catch (DataIntegrityViolationException ex) {
+            // Safety net: another request took this email between the check and the UPDATE.
+            throw new DuplicateEmailException(email);
+        }
+    }
 }

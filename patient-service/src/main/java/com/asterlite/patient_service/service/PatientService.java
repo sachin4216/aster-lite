@@ -11,4 +11,5 @@ public interface PatientService {
     PatientResponse getById(Long id);
     // status and lastName are optional filters; pass null to skip one.
     PageResponse<PatientResponse> list(PatientStatus status, String lastName, Pageable pageable);
+    PatientResponse update(Long id, PatientRequest request);
 }

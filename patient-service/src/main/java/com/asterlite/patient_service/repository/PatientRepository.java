@@ -13,6 +13,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // Derived query: Spring Data builds the SQL from the method name.
     boolean existsByEmail(String email);
 
+    // "Does a DIFFERENT patient already use this email?" IdNot excludes the patient being updated.
+    boolean existsByEmailAndIdNot(String email, Long id);
+
     // JPQL: written against the entity (Patient, p.lastName), not the table.
     // "(:x is null or ...)" makes each filter optional: a null parameter switches that condition off.
     // lower(...) on both sides ignores case; concat(:lastName, '%') means "starts with".
