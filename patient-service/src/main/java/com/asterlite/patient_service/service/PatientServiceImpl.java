@@ -104,4 +104,21 @@ public class PatientServiceImpl implements PatientService{
             throw new DuplicateEmailException(email);
         }
     }
+
+    @Override
+    public void deactivate(Long id) {
+        // An id that never existed is a 404, even though a repeated call on a real patient is not.
+        Patient patient = repository.findById(id)
+                .orElseThrow(() -> new PatientNotFoundException(id));
+
+        // Already inactive: nothing to do. The controller still returns 204, which makes DELETE idempotent.
+        if (patient.getStatus() == PatientStatus.INACTIVE) {
+            return;
+        }
+
+        // Soft delete: an UPDATE of the status, never repository.delete().
+        // Other services keep patientId in their own databases, so the row must stay.
+        patient.setStatus(PatientStatus.INACTIVE);
+        repository.save(patient);
+    }
 }
