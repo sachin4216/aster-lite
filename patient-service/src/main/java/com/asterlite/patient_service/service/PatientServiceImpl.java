@@ -11,6 +11,8 @@ import com.asterlite.patient_service.exception.PatientNotFoundException;
 import com.asterlite.patient_service.mapper.PatientMapper;
 import com.asterlite.patient_service.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -52,6 +54,9 @@ public class PatientServiceImpl implements PatientService{
         }
     }
 
+    // First call: runs the method and stores the returned PatientResponse under "patients::<id>".
+    // Later calls with the same id: the value comes from Redis and the method body does not run.
+    @Cacheable(value = "patients", key = "#id")
     @Override
     public PatientResponse getById(Long id) {
         // findById returns Optional<Patient>: empty when no row has this id.
@@ -72,6 +77,8 @@ public class PatientServiceImpl implements PatientService{
         return PageResponse.from(page);
     }
 
+    // Removes "patients::<id>" after a successful update, so the next GET reloads from MySQL.
+    @CacheEvict(value = "patients", key = "#id")
     @Override
     public PatientResponse update(Long id, PatientRequest request) {
         // Load first: an unknown id is a 404 before anything else is checked.
@@ -105,6 +112,7 @@ public class PatientServiceImpl implements PatientService{
         }
     }
 
+    @CacheEvict(value = "patients", key = "#id")
     @Override
     public void deactivate(Long id) {
         // An id that never existed is a 404, even though a repeated call on a real patient is not.

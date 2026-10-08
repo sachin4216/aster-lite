@@ -15,6 +15,9 @@ spring:
     redis:
       host: localhost
       port: 6379
+      # Without these, a request can wait up to 60 seconds for a stopped Redis before falling back to MySQL.
+      timeout: 1s
+      connect-timeout: 1s
     web:
       pageable:
         max-page-size: 100
