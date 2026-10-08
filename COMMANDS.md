@@ -167,6 +167,9 @@ Run from the root folder `C:\dev\aster-lite`.
 | `mvn -pl api-gateway compile` | Compile the gateway module |
 | `mvn -pl appointment-service compile` | Compile appointment-service |
 | `mvn -pl patient-service test` | Run one module's tests |
+| `mvn -pl appointment-service test` | Run appointment-service's tests. `contextLoads` needs Docker, discovery-server and config-server running. |
+| `mvn -pl appointment-service test -Dtest=SlotServiceImplTest` | Run one test class only |
+| `mvn -pl appointment-service test-compile` | Compile the main code and the tests without running them |
 | `mvn test` | Run every module's tests |
 | `mvn -pl patient-service package` | Run the tests and build the jar in `patient-service/target` |
 | `mvn -pl patient-service package -DskipTests` | Build the jar without running tests |

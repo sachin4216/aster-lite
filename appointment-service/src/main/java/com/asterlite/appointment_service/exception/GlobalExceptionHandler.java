@@ -39,6 +39,22 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Request body is missing or malformed", request, List.of());
     }
 
+    @ExceptionHandler(DoctorNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleDoctorNotFound(DoctorNotFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, List.of());
+    }
+
+    @ExceptionHandler(SlotOverlapException.class)
+    public ResponseEntity<ApiErrorResponse> handleSlotOverlap(SlotOverlapException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, List.of());
+    }
+
+    // Each field was valid on its own, but the two times do not fit together.
+    @ExceptionHandler(InvalidSlotTimeException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidSlotTime(InvalidSlotTimeException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
+    }
+
     // A path or query value has the wrong type, for example /api/doctors/abc/slots.
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
