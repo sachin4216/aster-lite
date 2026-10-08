@@ -79,4 +79,10 @@ public class PatientController {
         Pageable pageable = PageRequest.of(page, Math.min(size, maxPageSize), sort);
         return ResponseEntity.ok(service.list(status, lastName, pageable));
     }
+
+    // Same PatientRequest and @Valid as POST, so the PAT-1 validation rules apply unchanged.
+    @PutMapping("/{id}")
+    public ResponseEntity<PatientResponse> update(@PathVariable Long id, @Valid @RequestBody PatientRequest request){
+        return ResponseEntity.ok(service.update(id, request));
+    }
 }
