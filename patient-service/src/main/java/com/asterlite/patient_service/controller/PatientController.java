@@ -85,4 +85,11 @@ public class PatientController {
     public ResponseEntity<PatientResponse> update(@PathVariable Long id, @Valid @RequestBody PatientRequest request){
         return ResponseEntity.ok(service.update(id, request));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deactivate(@PathVariable Long id){
+        service.deactivate(id);
+        // 204 No Content: success with an empty body. ResponseEntity<Void> says there is no body.
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -12,4 +12,6 @@ public interface PatientService {
     // status and lastName are optional filters; pass null to skip one.
     PageResponse<PatientResponse> list(PatientStatus status, String lastName, Pageable pageable);
     PatientResponse update(Long id, PatientRequest request);
+    // Soft delete: sets the status to INACTIVE, the row stays.
+    void deactivate(Long id);
 }
