@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # lb:// = ask Eureka for instances, let LoadBalancer pick one
+            - id: patient-service
+              uri: lb://patient-service
+              predicates:
+                - Path=/api/patients/**
+            - id: appointment-service
+              uri: lb://appointment-service
+              predicates:
+                - Path=/api/doctors/**,/api/appointments/**
+
+eureka:
+  client:
+    server-url:
+      defaultZone: http://localhost:8761/eureka
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
