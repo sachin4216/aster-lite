@@ -134,6 +134,9 @@ docker exec -it aster-redis redis-cli ttl "patients::1"
 | `http://localhost:8888/patient-service/default` | The configuration patient-service receives, as JSON |
 | `http://localhost:8081/actuator/health` | `{"status":"UP"}` |
 | `http://localhost:8081/actuator/caches` | The cache names known to patient-service |
+| `http://localhost:8888/api-gateway/default` | The port and routes api-gateway receives, as JSON |
+| `http://localhost:8080/actuator/health` | `{"status":"UP"}` from api-gateway |
+| `http://localhost:8080/api/patients/1` | A patient, routed through the gateway to patient-service |
 
 From a terminal, `curl.exe -i <url>` prints the status line and headers as well, including `X-Instance-Port`:
 
@@ -143,7 +146,13 @@ curl.exe -i http://localhost:8081/actuator/health
 
 In PowerShell use `curl.exe`, not `curl`: plain `curl` is an alias for a different PowerShell command.
 
-Start order: Docker, then discovery-server, then config-server, then patient-service. After changing a file under `config-server/src/main/resources/config`, restart config-server first and patient-service second.
+Through the gateway, repeat this call with patient-service running on 8081 and 8091 and watch `X-Instance-port` change:
+
+```
+curl.exe -i http://localhost:8080/api/patients/1
+```
+
+Start order: Docker, then discovery-server, then config-server, then patient-service, then api-gateway. After changing a file under `config-server/src/main/resources/config`, restart config-server first and the service that reads the file second.
 
 ## 7. Maven
 
@@ -152,6 +161,7 @@ Run from the root folder `C:\dev\aster-lite`.
 | Command | What it does |
 |---|---|
 | `mvn -pl patient-service compile` | Compile one module |
+| `mvn -pl api-gateway compile` | Compile the gateway module |
 | `mvn -pl patient-service test` | Run one module's tests |
 | `mvn test` | Run every module's tests |
 | `mvn -pl patient-service package` | Run the tests and build the jar in `patient-service/target` |

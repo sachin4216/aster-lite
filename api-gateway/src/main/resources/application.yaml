@@ -1,0 +1,7 @@
+spring:
+  application:
+    # must match the file name config-server serves: config/api-gateway.yml
+    name: api-gateway
+  config:
+    # fetch port and routes from config-server at startup
+    import: "configserver:http://localhost:8888"
