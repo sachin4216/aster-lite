@@ -86,6 +86,16 @@ docker exec aster-mysql mysql -uroot -proot -e "DELETE FROM patient_db.patients 
 
 The second one removes the test rows created during story reviews.
 
+### appointment_db (Day 2)
+
+```
+docker exec -it aster-mysql mysql -uroot -proot appointment_db
+docker exec aster-mysql mysql -uroot -proot -e "SELECT id, doctor_id, start_time, status, version FROM appointment_db.slots ORDER BY id"
+docker exec aster-mysql mysql -uroot -proot -e "SELECT * FROM appointment_db.appointments ORDER BY id"
+```
+
+The last two are the check after a booking: the slot's `status` and `version`, and the appointment rows. After a rolled-back booking the slot is still `AVAILABLE` and no new appointment row exists.
+
 ## 4. Redis
 
 ### Open the Redis prompt
