@@ -1,5 +1,7 @@
 package com.asterlite.appointment_service.service;
 
+import com.asterlite.appointment_service.client.PatientClient;
+import com.asterlite.appointment_service.client.PatientSummary;
 import com.asterlite.appointment_service.dto.AppointmentRequest;
 import com.asterlite.appointment_service.dto.AppointmentResponse;
 import com.asterlite.appointment_service.entity.Appointment;
@@ -7,6 +9,8 @@ import com.asterlite.appointment_service.entity.Doctor;
 import com.asterlite.appointment_service.entity.Slot;
 import com.asterlite.appointment_service.enums.AppointmentStatus;
 import com.asterlite.appointment_service.enums.SlotStatus;
+import com.asterlite.appointment_service.exception.PatientInactiveException;
+import com.asterlite.appointment_service.exception.PatientNotFoundException;
 import com.asterlite.appointment_service.exception.SlotAlreadyBookedException;
 import com.asterlite.appointment_service.mapper.AppointmentMapper;
 import com.asterlite.appointment_service.repository.AppointmentRepository;
@@ -17,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -27,9 +33,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-// Plain Mockito, no Spring context. @Transactional does nothing here: this proves the logic, not the rollback.
+// Plain Mockito, no Spring context. PatientClient is mocked, so patient-service does not need to run.
 @ExtendWith(MockitoExtension.class)
 class AppointmentServiceImplTest {
 
@@ -41,18 +48,26 @@ class AppointmentServiceImplTest {
     private AppointmentRepository appointmentRepository;
     @Mock
     private SlotRepository slotRepository;
+    @Mock
+    private PatientClient patientClient;
+    // A mocked transaction manager: begin, commit and rollback do nothing.
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     private AppointmentServiceImpl service;
 
     @BeforeEach
     void setUp() {
+        // A real TransactionTemplate around the mocked manager: it simply runs the block it is given.
         // The mapper has no dependencies, so the real one is used instead of a mock.
-        service = new AppointmentServiceImpl(appointmentRepository, slotRepository, new AppointmentMapper());
+        service = new AppointmentServiceImpl(appointmentRepository, slotRepository, new AppointmentMapper(),
+                patientClient, new TransactionTemplate(transactionManager));
     }
 
     @Test
     void book_freeSlot_savesPendingAppointmentAndBooksSlot() {
         Slot slot = slot(SlotStatus.AVAILABLE);
+        when(patientClient.getPatient(PATIENT_ID)).thenReturn(patient("ACTIVE"));
         when(slotRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot));
         // save() returns its argument, as the real repository does.
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -77,6 +92,7 @@ class AppointmentServiceImplTest {
 
     @Test
     void book_bookedSlot_throwsConflictAndNeverSavesAppointment() {
+        when(patientClient.getPatient(PATIENT_ID)).thenReturn(patient("ACTIVE"));
         when(slotRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot(SlotStatus.BOOKED)));
 
         assertThatThrownBy(() -> service.book(new AppointmentRequest(PATIENT_ID, SLOT_ID)))
@@ -86,6 +102,34 @@ class AppointmentServiceImplTest {
 
         verify(appointmentRepository, never()).save(any());
         verify(slotRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void book_unknownPatient_throwsNotFoundAndNeverTouchesSlot() {
+        // PatientClient turns patient-service's 404 into this exception.
+        when(patientClient.getPatient(99L)).thenThrow(new PatientNotFoundException(99L));
+
+        assertThatThrownBy(() -> service.book(new AppointmentRequest(99L, SLOT_ID)))
+                .isInstanceOf(PatientNotFoundException.class)
+                .hasMessageContaining("99");
+
+        // Not even a read: the patient check comes before any database work and before the transaction.
+        verifyNoInteractions(slotRepository, appointmentRepository, transactionManager);
+    }
+
+    @Test
+    void book_inactivePatient_throwsConflictAndNeverTouchesSlot() {
+        when(patientClient.getPatient(PATIENT_ID)).thenReturn(patient("INACTIVE"));
+
+        assertThatThrownBy(() -> service.book(new AppointmentRequest(PATIENT_ID, SLOT_ID)))
+                .isInstanceOf(PatientInactiveException.class)
+                .hasMessageContaining(String.valueOf(PATIENT_ID));
+
+        verifyNoInteractions(slotRepository, appointmentRepository, transactionManager);
+    }
+
+    private PatientSummary patient(String status) {
+        return new PatientSummary(PATIENT_ID, "Asha", "Rao", "asha@example.com", "9876543210", "EMAIL", status);
     }
 
     private Slot slot(SlotStatus status) {
