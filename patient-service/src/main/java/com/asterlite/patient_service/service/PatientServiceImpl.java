@@ -1,5 +1,6 @@
 package com.asterlite.patient_service.service;
 
+import com.asterlite.patient_service.dto.PageResponse;
 import com.asterlite.patient_service.dto.PatientRequest;
 import com.asterlite.patient_service.dto.PatientResponse;
 import com.asterlite.patient_service.entity.Patient;
@@ -11,6 +12,8 @@ import com.asterlite.patient_service.mapper.PatientMapper;
 import com.asterlite.patient_service.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.Locale;
@@ -57,5 +60,15 @@ public class PatientServiceImpl implements PatientService{
                 .map(mapper::toResponse)
                 // Empty Optional -> exception -> GlobalExceptionHandler -> 404 with the id in the message.
                 .orElseThrow(() -> new PatientNotFoundException(id));
+    }
+
+    @Override
+    public PageResponse<PatientResponse> list(PatientStatus status, String lastName, Pageable pageable) {
+        // "?lastName=" arrives as an empty string. Treat it as "no filter", not "starts with nothing".
+        String prefix = (lastName == null || lastName.isBlank()) ? null : lastName.trim();
+
+        // Page.map converts each entity to a DTO and keeps the paging numbers.
+        Page<PatientResponse> page = repository.search(status, prefix, pageable).map(mapper::toResponse);
+        return PageResponse.from(page);
     }
 }

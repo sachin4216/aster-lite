@@ -15,6 +15,9 @@ spring:
     redis:
       host: localhost
       port: 6379
+    web:
+      pageable:
+        max-page-size: 100
   cache:
     type: redis
     redis:
