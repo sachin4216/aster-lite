@@ -3,6 +3,7 @@ package com.asterlite.patient_service.dto;
 import com.asterlite.patient_service.enums.NotificationChannel;
 import com.asterlite.patient_service.enums.PatientStatus;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -17,5 +18,5 @@ public record PatientResponse(
         PatientStatus status,
         Instant createdAt,
         Instant updatedAt
-) {
+) implements Serializable {
 }
