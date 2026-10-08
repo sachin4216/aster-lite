@@ -137,6 +137,9 @@ docker exec -it aster-redis redis-cli ttl "patients::1"
 | `http://localhost:8888/api-gateway/default` | The port and routes api-gateway receives, as JSON |
 | `http://localhost:8080/actuator/health` | `{"status":"UP"}` from api-gateway |
 | `http://localhost:8080/api/patients/1` | A patient, routed through the gateway to patient-service |
+| `http://localhost:8888/appointment-service/default` | The configuration appointment-service receives. Keys must read `spring.datasource.url`, not `server.spring...` |
+| `http://localhost:8082/actuator/health` | `{"status":"UP"}` from appointment-service |
+| `http://localhost:8082/api/nothing` | `404` as `ApiErrorResponse`, with the `X-Instance-Port: 8082` header |
 
 From a terminal, `curl.exe -i <url>` prints the status line and headers as well, including `X-Instance-Port`:
 
@@ -152,7 +155,7 @@ Through the gateway, repeat this call with patient-service running on 8081 and 8
 curl.exe -i http://localhost:8080/api/patients/1
 ```
 
-Start order: Docker, then discovery-server, then config-server, then patient-service, then api-gateway. After changing a file under `config-server/src/main/resources/config`, restart config-server first and the service that reads the file second.
+Start order: Docker, then discovery-server, then config-server, then patient-service, then appointment-service, then api-gateway. After changing a file under `config-server/src/main/resources/config`, restart config-server first and the service that reads the file second.
 
 ## 7. Maven
 
@@ -162,6 +165,7 @@ Run from the root folder `C:\dev\aster-lite`.
 |---|---|
 | `mvn -pl patient-service compile` | Compile one module |
 | `mvn -pl api-gateway compile` | Compile the gateway module |
+| `mvn -pl appointment-service compile` | Compile appointment-service |
 | `mvn -pl patient-service test` | Run one module's tests |
 | `mvn test` | Run every module's tests |
 | `mvn -pl patient-service package` | Run the tests and build the jar in `patient-service/target` |
