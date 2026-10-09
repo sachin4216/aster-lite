@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -103,6 +104,22 @@ class AppointmentServiceImplTest {
 
         verify(appointmentRepository, never()).save(any());
         verify(slotRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void book_slotChangedByAnotherRequest_throwsConflictAndNeverSavesAppointment() {
+        when(patientClient.getPatient(PATIENT_ID)).thenReturn(patient("ACTIVE"));
+        // The slot still reads AVAILABLE, so the status check passes.
+        when(slotRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot(SlotStatus.AVAILABLE)));
+        // What Spring throws when the UPDATE with "where version = ?" matches no row.
+        when(slotRepository.saveAndFlush(any(Slot.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(Slot.class, SLOT_ID));
+
+        assertThatThrownBy(() -> service.book(new AppointmentRequest(PATIENT_ID, SLOT_ID)))
+                .isInstanceOf(SlotAlreadyBookedException.class)
+                .hasMessageContaining(String.valueOf(SLOT_ID));
+
+        verify(appointmentRepository, never()).save(any());
     }
 
     @Test

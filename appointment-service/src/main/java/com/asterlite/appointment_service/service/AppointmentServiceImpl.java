@@ -16,6 +16,7 @@ import com.asterlite.appointment_service.mapper.AppointmentMapper;
 import com.asterlite.appointment_service.repository.AppointmentRepository;
 import com.asterlite.appointment_service.repository.SlotRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -48,7 +49,14 @@ public class AppointmentServiceImpl implements AppointmentService {
         //    @Transactional on reserve() would NOT work: the annotation is applied by a proxy around
         //    the bean, and a call from book() to this.reserve() never passes through that proxy.
         //    TransactionTemplate needs no proxy: the transaction starts and ends around this one call.
-        return transactionTemplate.execute(status -> reserve(request));
+        try {
+            return transactionTemplate.execute(status -> reserve(request));
+        } catch (ObjectOptimisticLockingFailureException ex) {
+            // Two requests read the slot as AVAILABLE at the same moment. The other one updated it first,
+            // so this UPDATE ("where id = ? and version = ?") matched no row (APT-7).
+            // Caught here, outside execute(): the transaction has already been rolled back.
+            throw new SlotAlreadyBookedException(request.slotId());
+        }
     }
 
     // Runs inside the transaction opened by book(). If anything throws a RuntimeException,
@@ -57,8 +65,9 @@ public class AppointmentServiceImpl implements AppointmentService {
         Slot slot = slotRepository.findById(request.slotId())
                 .orElseThrow(() -> new SlotNotFoundException(request.slotId()));
 
-        // Catches a request that arrives after the slot was taken.
-        // Two requests at the same instant both see AVAILABLE here; APT-7 handles that case.
+        // Catches a late request: it arrives after the slot was taken and reads BOOKED.
+        // Two requests at the same instant both read AVAILABLE and pass this check;
+        // the version column stops the second one at saveAndFlush below.
         if (slot.getStatus() == SlotStatus.BOOKED) {
             throw new SlotAlreadyBookedException(slot.getId());
         }
