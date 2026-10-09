@@ -1,10 +1,14 @@
 package com.asterlite.appointment_service.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
 
 @Configuration
 public class RestClientConfig {
@@ -28,8 +32,19 @@ public class RestClientConfig {
 
     // The client PatientClient uses. @LoadBalanced on the parameter selects the second builder.
     // "patient-service" is the Eureka name, not a host: no host or port appears anywhere (criterion 2).
+    // Both timeouts come from appointment-service.yml (APT-6 criterion 7).
     @Bean
-    RestClient patientRestClient(@LoadBalanced RestClient.Builder builder) {
-        return builder.baseUrl("http://patient-service").build();
+    RestClient patientRestClient(@LoadBalanced RestClient.Builder builder,
+                                 @Value("${patient-client.connect-timeout}") Duration connectTimeout,
+                                 @Value("${patient-client.read-timeout}") Duration readTimeout) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        // Maximum time to open the TCP connection.
+        requestFactory.setConnectTimeout(connectTimeout);
+        // Maximum time to wait for the response once connected. This is the 2 seconds of criterion 1.
+        requestFactory.setReadTimeout(readTimeout);
+
+        return builder.baseUrl("http://patient-service")
+                .requestFactory(requestFactory)
+                .build();
     }
 }
