@@ -3,6 +3,7 @@ package com.asterlite.appointment_service.controller;
 import com.asterlite.appointment_service.dto.AppointmentRequest;
 import com.asterlite.appointment_service.dto.AppointmentResponse;
 import com.asterlite.appointment_service.enums.AppointmentStatus;
+import com.asterlite.appointment_service.exception.PatientServiceUnavailableException;
 import com.asterlite.appointment_service.exception.SlotAlreadyBookedException;
 import com.asterlite.appointment_service.service.AppointmentService;
 import org.junit.jupiter.api.Test;
@@ -82,6 +83,24 @@ class AppointmentControllerTest {
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.error").value("Conflict"))
                 .andExpect(jsonPath("$.message").value("Slot with id 7 is already booked"))
+                .andExpect(jsonPath("$.path").value("/api/appointments"))
+                .andExpect(jsonPath("$.errors").isEmpty());
+    }
+
+    @Test
+    void book_patientServiceUnavailable_returns503AsApiErrorResponse() throws Exception {
+        when(appointmentService.book(any()))
+                .thenThrow(new PatientServiceUnavailableException(new RuntimeException("connection refused")));
+
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "patientId": 1, "slotId": 7 }
+                                """))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.error").value("Service Unavailable"))
+                .andExpect(jsonPath("$.message").value("Patient service is unavailable, please try again later"))
                 .andExpect(jsonPath("$.path").value("/api/appointments"))
                 .andExpect(jsonPath("$.errors").isEmpty());
     }

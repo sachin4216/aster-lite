@@ -22,4 +22,63 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # circuitbreakers: shows CLOSED / OPEN / HALF_OPEN at /actuator/circuitbreakers
+        include: health,info,circuitbreakers
+
+# Timeouts of the RestClient that calls patient-service
+patient-client:
+  # Maximum time to open the connection. Connecting takes milliseconds, so 1s means the host is not there.
+  connect-timeout: 1s
+  # Maximum time to wait for the answer once connected. Fixed by APT-6 criterion 1.
+  read-timeout: 2s
+
+resilience4j:
+  retry:
+    instances:
+      # Instance name. Must match @Retry(name = "patientService") in PatientClient.
+      patientService:
+        # Total attempts, the first call included: 1 call + 2 retries. Fixed by criterion 2.
+        max-attempts: 3
+        # Pause between two attempts. Long enough for a short blip to pass, short enough for a waiting user.
+        # Worst case for one booking: 2s + 0.5s + 2s + 0.5s + 2s = 7s.
+        wait-duration: 500ms
+        # Only these exceptions are retried; every other exception fails at once.
+        # A 404 (PatientNotFoundException) is not here: asking again gives the same answer.
+        # An open breaker (CallNotPermittedException) is not here: retrying it would only add waiting.
+        retry-exceptions:
+          # timeout or connection refused
+          - org.springframework.web.client.ResourceAccessException
+          # any 5xx, including the 503 the load balancer gives when Eureka has no instance
+          - org.springframework.web.client.HttpServerErrorException
+  circuitbreaker:
+    instances:
+      # Instance name. Must match @CircuitBreaker(name = "patientService") in PatientClient.
+      patientService:
+        # How the breaker remembers results: the last N calls (COUNT_BASED) or the last N seconds (TIME_BASED).
+        # COUNT_BASED is easier to reason about and to demonstrate.
+        sliding-window-type: COUNT_BASED
+        # N: the failure rate is calculated over the last 10 calls. Small, so it reacts within a few bookings.
+        sliding-window-size: 10
+        # No rate is calculated before 5 calls are recorded, so one or two bad calls cannot open the breaker.
+        # Retry is outside the breaker, so each attempt counts: 5 calls = the second failed booking.
+        minimum-number-of-calls: 5
+        # Percent of failed calls in the window that opens the breaker. Half the calls failing is an outage.
+        failure-rate-threshold: 50
+        # How long the breaker stays OPEN and rejects every call without contacting patient-service.
+        # 10s gives a restarting instance time to come back.
+        wait-duration-in-open-state: 10s
+        # Trial calls allowed in HALF_OPEN. Their failure rate decides: below the threshold -> CLOSED,
+        # otherwise -> OPEN again. Three, because a single success could be luck.
+        permitted-number-of-calls-in-half-open-state: 3
+        # Move to HALF_OPEN after the wait by itself. With false, the breaker stays OPEN until the next
+        # booking arrives, so Actuator would keep showing OPEN on an idle service.
+        automatic-transition-from-open-to-half-open-enabled: true
+        # Only these exceptions count as a failure. The same two as the retry list:
+        # timeout / connection refused, and 5xx.
+        record-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        # Not counted at all, neither failure nor success. A 404 is a valid answer (criterion 4):
+        # ten bookings with a wrong patient id must not open the breaker on a healthy patient-service.
+        ignore-exceptions:
+          - com.asterlite.appointment_service.exception.PatientNotFoundException

@@ -11,6 +11,7 @@ import com.asterlite.appointment_service.enums.AppointmentStatus;
 import com.asterlite.appointment_service.enums.SlotStatus;
 import com.asterlite.appointment_service.exception.PatientInactiveException;
 import com.asterlite.appointment_service.exception.PatientNotFoundException;
+import com.asterlite.appointment_service.exception.PatientServiceUnavailableException;
 import com.asterlite.appointment_service.exception.SlotAlreadyBookedException;
 import com.asterlite.appointment_service.mapper.AppointmentMapper;
 import com.asterlite.appointment_service.repository.AppointmentRepository;
@@ -125,6 +126,19 @@ class AppointmentServiceImplTest {
                 .isInstanceOf(PatientInactiveException.class)
                 .hasMessageContaining(String.valueOf(PATIENT_ID));
 
+        verifyNoInteractions(slotRepository, appointmentRepository, transactionManager);
+    }
+
+    @Test
+    void book_patientServiceUnavailable_savesNothing() {
+        // PatientClient throws this after its retries fail, or at once when the breaker is open.
+        when(patientClient.getPatient(PATIENT_ID))
+                .thenThrow(new PatientServiceUnavailableException(new RuntimeException("connection refused")));
+
+        assertThatThrownBy(() -> service.book(new AppointmentRequest(PATIENT_ID, SLOT_ID)))
+                .isInstanceOf(PatientServiceUnavailableException.class);
+
+        // No read, no write, no transaction: the slot stays AVAILABLE and no appointment exists.
         verifyNoInteractions(slotRepository, appointmentRepository, transactionManager);
     }
 

@@ -149,6 +149,7 @@ docker exec -it aster-redis redis-cli ttl "patients::1"
 | `http://localhost:8080/api/patients/1` | A patient, routed through the gateway to patient-service |
 | `http://localhost:8888/appointment-service/default` | The configuration appointment-service receives. Keys must read `spring.datasource.url`, not `server.spring...` |
 | `http://localhost:8082/actuator/health` | `{"status":"UP"}` from appointment-service |
+| `http://localhost:8082/actuator/circuitbreakers` | The `patientService` breaker: `state` (`CLOSED`, `OPEN`, `HALF_OPEN`), `failedCalls`, `failureRate`, `notPermittedCalls` |
 | `http://localhost:8082/api/nothing` | `404` as `ApiErrorResponse`, with the `X-Instance-Port: 8082` header |
 
 From a terminal, `curl.exe -i <url>` prints the status line and headers as well, including `X-Instance-Port`:
@@ -176,10 +177,12 @@ Run from the root folder `C:\dev\aster-lite`.
 | `mvn -pl patient-service compile` | Compile one module |
 | `mvn -pl api-gateway compile` | Compile the gateway module |
 | `mvn -pl appointment-service compile` | Compile appointment-service |
+| `mvn -pl config-server compile` | Compile config-server. Also copies the edited files under `config/` into `target/classes`. |
 | `mvn -pl patient-service test` | Run one module's tests |
 | `mvn -pl appointment-service test` | Run appointment-service's tests. `contextLoads` needs Docker, discovery-server and config-server running. |
 | `mvn -pl appointment-service test -Dtest=SlotServiceImplTest` | Run one test class only |
 | `mvn -pl appointment-service test-compile` | Compile the main code and the tests without running them |
+| `mvn -pl appointment-service,config-server test-compile` | Compile two modules in one run (a comma-separated list after `-pl`) |
 | `mvn test` | Run every module's tests |
 | `mvn -pl patient-service package` | Run the tests and build the jar in `patient-service/target` |
 | `mvn -pl patient-service package -DskipTests` | Build the jar without running tests |

@@ -81,6 +81,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getMessage(), request, List.of());
     }
 
+    // patient-service could not be asked. 503 tells the client the problem is temporary and a retry may work.
+    @ExceptionHandler(PatientServiceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handlePatientServiceUnavailable(PatientServiceUnavailableException ex,
+                                                                            HttpServletRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request, List.of());
+    }
+
     // A path or query value has the wrong type, for example /api/doctors/abc/slots.
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
